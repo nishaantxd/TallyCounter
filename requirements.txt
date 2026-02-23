@@ -1,0 +1,4 @@
+PyQt6
+pystray
+psutil
+pyinstaller
