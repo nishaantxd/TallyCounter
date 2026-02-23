@@ -2,6 +2,22 @@
 
 A lightweight Windows system tray app that monitors how many instances of a chosen executable are running, samples every minute, and shows a calendar heatmap of daily maximum counts.
 
+## Download & Install
+
+> **No Python required.**
+
+1. Go to the [**Releases**](../../releases/latest) page
+2. Download `TallyCounter.exe`
+3. Put it anywhere (e.g. `C:\Program Files\TallyCounter\`)
+4. Double-click it — a **Configure** window appears on first launch
+5. Click **Browse**, select the `.exe` you want to monitor, click **Save**
+6. The app minimises to the **system tray** (bottom-right, near the clock)
+7. Right-click the tray icon → **Start with Windows** to enable auto-start
+
+That's it. The app runs silently in the background from now on.
+
+> **Note:** Windows SmartScreen may warn about an unknown publisher on first run — click **More info → Run anyway**. This is normal for unsigned open-source apps.
+
 ## Features
 
 - **System tray** — runs silently in the background; single-click to open the dashboard
