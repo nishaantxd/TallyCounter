@@ -25,56 +25,81 @@ class MonitorWorker(QObject):
             self.error.emit(f"Error: Executable not found at '{self.executable_path}'")
             return
 
+        last_count = -1
         while self._is_running:
             try:
-                count = 0
-                if sys.platform == 'win32':
-                    # Count top-level instances only (processes whose parent is NOT the same executable).
-                    # This correctly handles multi-process apps like Chrome (renderer/GPU processes have
-                    # chrome.exe as their parent and are excluded) while counting all independent instances
-                    # of console/background apps like python.exe or tally.exe.
-                    main_pids = set()
-                    for proc in psutil.process_iter(['pid', 'ppid', 'name', 'exe']):
-                        try:
-                            if proc.info['name'].lower() == self.executable_name.lower() and proc.info['exe'] and os.path.samefile(proc.info['exe'], self.executable_path):
-                                parent = psutil.Process(proc.info['ppid']) if proc.info['ppid'] else None
-                                parent_is_same = False
-                                if parent:
-                                    try:
-                                        parent_is_same = (
-                                            parent.name().lower() == self.executable_name.lower()
-                                            and parent.exe()
-                                            and os.path.samefile(parent.exe(), self.executable_path)
-                                        )
-                                    except (psutil.NoSuchProcess, psutil.AccessDenied, FileNotFoundError):
-                                        pass
-                                if not parent_is_same:
-                                    main_pids.add(proc.info['pid'])
-                        except (psutil.NoSuchProcess, psutil.AccessDenied, FileNotFoundError):
-                            continue
-                    count = len(main_pids)
-                else:
-                    # Default logic for non-Windows platforms
-                    main_pids = set()
-                    for proc in psutil.process_iter(['pid', 'ppid', 'name', 'exe']):
-                        try:
-                            if proc.info['name'] == self.executable_name and proc.info['exe'] and os.path.samefile(proc.info['exe'], self.executable_path):
-                                parent = psutil.Process(proc.info['ppid']) if proc.info['ppid'] else None
-                                if not parent or parent.name() != self.executable_name or (parent.exe() if parent.exe() else None) != self.executable_path:
-                                    main_pids.add(proc.info['pid'])
-                        except (psutil.NoSuchProcess, psutil.AccessDenied, FileNotFoundError):
-                            continue
-                    count = len(main_pids)
-
-                today_str = datetime.now().strftime('%Y-%m-%d')
-                self.db.update_daily_max(today_str, count)
-                self.instance_count_updated.emit(count)
-
+                count = self._count_instances()
+                if count != last_count:
+                    last_count = count
+                    today_str = datetime.now().strftime('%Y-%m-%d')
+                    self.db.update_daily_max(today_str, count)
+                    self.instance_count_updated.emit(count)
             except Exception as e:
                 self.error.emit(str(e))
-            # Wait up to 60 seconds, but wake immediately if stop() is called
-            self._stop_event.wait(timeout=60)
+            # Check every 5 seconds so the UI reacts quickly when instances start/stop.
+            # Wakes immediately if stop() is called.
+            self._stop_event.wait(timeout=5)
             self._stop_event.clear()
+
+    def _same_exe(self, path_a: str, path_b: str) -> bool:
+        """Return True if two paths refer to the same file, with a name-only fallback."""
+        try:
+            return os.path.samefile(path_a, path_b)
+        except (FileNotFoundError, OSError):
+            # Fallback: compare just the filenames (handles Store/UWP apps whose
+            # actual exe path differs from what was saved in config, e.g. Notepad on Win11)
+            return os.path.basename(path_a).lower() == os.path.basename(path_b).lower()
+
+    def _count_instances(self) -> int:
+        """Count the number of top-level running instances of the monitored executable."""
+        main_pids = set()
+        name_lower = self.executable_name.lower()
+
+        for proc in psutil.process_iter(['pid', 'ppid', 'name', 'exe']):
+            try:
+                proc_name = proc.info['name']
+                proc_exe  = proc.info['exe']
+
+                # Match by name first (fast check)
+                if sys.platform == 'win32':
+                    if proc_name.lower() != name_lower:
+                        continue
+                else:
+                    if proc_name != self.executable_name:
+                        continue
+
+                # Match by path if available; fall back to name-only match for
+                # Store/UWP apps (e.g. Notepad on Windows 11) where the exe path
+                # differs from the path stored in config.
+                if proc_exe and not self._same_exe(proc_exe, self.executable_path):
+                    continue
+
+                # Exclude child processes whose parent is the same executable
+                # (handles multi-process apps like Chrome, Electron, etc.)
+                parent_is_same = False
+                ppid = proc.info['ppid']
+                if ppid:
+                    try:
+                        parent = psutil.Process(ppid)
+                        parent_name = parent.name()
+                        if sys.platform == 'win32':
+                            parent_is_same = parent_name.lower() == name_lower
+                        else:
+                            parent_is_same = parent_name == self.executable_name
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+
+                if not parent_is_same:
+                    main_pids.add(proc.info['pid'])
+
+            except (psutil.NoSuchProcess, psutil.AccessDenied, FileNotFoundError):
+                continue
+
+        return len(main_pids)
+
+    def force_poll(self):
+        """Trigger an immediate count without waiting for the next 5-second tick."""
+        self._stop_event.set()
 
     def stop(self):
         self._is_running = False

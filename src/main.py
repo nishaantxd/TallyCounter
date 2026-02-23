@@ -84,6 +84,7 @@ class TallyCounterApp:
         self.monitor = ProcessMonitor(executable_path)
         self.monitor.worker.instance_count_updated.connect(self.dashboard_window.update_live_counts)
         self.monitor.worker.error.connect(self.handle_monitor_error)
+        self.dashboard_window.refresh_requested.connect(self.monitor.worker.force_poll)
         self.monitor.start()
         self.dashboard_window.load_heatmap_data()
 

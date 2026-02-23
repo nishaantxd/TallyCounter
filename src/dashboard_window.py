@@ -3,7 +3,7 @@ import psutil
 from datetime import datetime
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                               QLabel, QPushButton, QFrame)
-from PyQt6.QtCore import QTimer, QDate, Qt
+from PyQt6.QtCore import QTimer, QDate, Qt, pyqtSignal
 from PyQt6.QtGui import QFont, QIcon
 from heatmap_widget import CalendarHeatmap
 from database import Database
@@ -61,6 +61,8 @@ def make_stat_card(title, initial_value):
 
 
 class DashboardWindow(QMainWindow):
+    refresh_requested = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.db = Database()
@@ -120,10 +122,14 @@ class DashboardWindow(QMainWindow):
         nav_layout = QHBoxLayout()
         prev_btn = QPushButton("‹ Prev")
         next_btn = QPushButton("Next ›")
+        refresh_btn = QPushButton("↻ Refresh")
         prev_btn.setFixedWidth(80)
         next_btn.setFixedWidth(80)
+        refresh_btn.setFixedWidth(90)
         prev_btn.clicked.connect(self.prev_month_action)
         next_btn.clicked.connect(self.next_month_action)
+        refresh_btn.clicked.connect(self.refresh_requested)
+        refresh_btn.setToolTip("Re-count instances now")
         self.month_label = QLabel()
         self.month_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.month_label.setStyleSheet(MONTH_LABEL_STYLE)
@@ -131,6 +137,7 @@ class DashboardWindow(QMainWindow):
         nav_layout.addStretch()
         nav_layout.addWidget(self.month_label)
         nav_layout.addStretch()
+        nav_layout.addWidget(refresh_btn)
         nav_layout.addWidget(next_btn)
         root.addLayout(nav_layout)
 
