@@ -9,6 +9,7 @@ A lightweight Windows system tray app that monitors how many instances of a chos
 - **Calendar heatmap** — green gradient showing daily peak instance counts for the current month; click any cell for details
 - **Live stat cards** — current instance count, today's max, system time, CPU usage, RAM usage
 - **Persistent storage** — SQLite database records daily maximums across sessions
+- **Start with Windows** — optional auto-start via Windows registry (no admin rights required)
 - **Portable** — can be packaged as a single `.exe` with no Python installation required on the target machine
 
 ## Requirements
@@ -52,7 +53,8 @@ TallyCounter/
 │   ├── database.py         # SQLite persistence (config + daily counts)
 │   ├── dashboard_window.py # Main dashboard UI (stat cards + heatmap)
 │   ├── heatmap_widget.py   # Calendar heatmap widget
-│   └── config_window.py    # First-run executable selection
+│   ├── config_window.py    # First-run executable selection
+│   └── startup.py          # Windows registry auto-start helper
 ├── testapp.py              # Dummy process for testing instance counting
 ├── TallyCounter.spec       # PyInstaller build spec
 ├── requirements.txt
@@ -68,7 +70,15 @@ TallyCounter/
 | pywin32 | Windows process API (parent-process detection) |
 | sqlite3 | Built-in — persistent storage |
 | PyInstaller | Single-file .exe packaging |
+## Usage
 
+| Action | How |
+|--------|-----|
+| Open dashboard | Single-click the tray icon |
+| See past days | Click **‹ Prev / Next ›** to navigate months; click any heatmap cell for details |
+| Enable auto-start | Right-click tray → **Start with Windows** (tick to enable, untick to disable) |
+| Change monitored exe | Right-click tray → **Configure** → **Reset** → browse to new exe → **Save** |
+| Quit | Right-click tray → **Exit** |
 ## How Instance Counting Works
 
 The monitor counts **top-level process instances** — processes whose parent is not the same executable. This means:

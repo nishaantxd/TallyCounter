@@ -1,12 +1,13 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QMessageBox
+import os
+from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtCore import QTimer
 from database import Database
 from config_window import ConfigWindow
 from dashboard_window import DashboardWindow
 from monitor import ProcessMonitor
-import os
+import startup
 
 class TallyCounterApp:
     def __init__(self):
@@ -26,14 +27,19 @@ class TallyCounterApp:
 
         self.action_open = QAction("Open Dashboard")
         self.action_config = QAction("Configure")
+        self.action_startup = QAction("Start with Windows")
+        self.action_startup.setCheckable(True)
+        self.action_startup.setChecked(startup.is_startup_enabled())
         self.action_exit = QAction("Exit")
 
         self.action_open.triggered.connect(self.show_dashboard)
         self.action_config.triggered.connect(self.show_config_window)
+        self.action_startup.triggered.connect(self.toggle_startup)
         self.action_exit.triggered.connect(self.exit_app)
 
         self.tray_menu.addAction(self.action_open)
         self.tray_menu.addAction(self.action_config)
+        self.tray_menu.addAction(self.action_startup)
         self.tray_menu.addSeparator()
         self.tray_menu.addAction(self.action_exit)
 
@@ -90,6 +96,12 @@ class TallyCounterApp:
         self.dashboard_window.show()
         self.dashboard_window.raise_()
         self.dashboard_window.activateWindow()
+
+    def toggle_startup(self, checked: bool):
+        if checked:
+            startup.enable_startup()
+        else:
+            startup.disable_startup()
 
     def on_tray_icon_activated(self, reason):
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
