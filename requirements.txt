@@ -1,4 +1,4 @@
 PyQt6
-pystray
 psutil
+pywin32
 pyinstaller

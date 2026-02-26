@@ -7,6 +7,7 @@ from PyQt6.QtCore import QTimer, QDate, Qt, pyqtSignal
 from PyQt6.QtGui import QFont, QIcon
 from heatmap_widget import CalendarHeatmap
 from database import Database
+from export_dialog import ExportDialog
 
 APP_STYLE = """
     QMainWindow, QWidget {
@@ -119,26 +120,55 @@ class DashboardWindow(QMainWindow):
         root.addWidget(sep)
 
         # --- Month Navigation ---
+        # Use equal-width side containers so month label stays truly centered
         nav_layout = QHBoxLayout()
-        prev_btn = QPushButton("‹ Prev")
-        next_btn = QPushButton("Next ›")
-        refresh_btn = QPushButton("↻ Refresh")
+        nav_layout.setContentsMargins(0, 0, 0, 0)
+
+        left_widget = QWidget()
+        left_widget.setFixedWidth(220)
+        left_layout = QHBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(6)
+        prev_btn = QPushButton("\u2039 Prev")
         prev_btn.setFixedWidth(80)
-        next_btn.setFixedWidth(80)
-        refresh_btn.setFixedWidth(90)
         prev_btn.clicked.connect(self.prev_month_action)
-        next_btn.clicked.connect(self.next_month_action)
-        refresh_btn.clicked.connect(self.refresh_requested)
-        refresh_btn.setToolTip("Re-count instances now")
+        left_layout.addWidget(prev_btn)
+        left_layout.addStretch()
+
         self.month_label = QLabel()
         self.month_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.month_label.setStyleSheet(MONTH_LABEL_STYLE)
-        nav_layout.addWidget(prev_btn)
-        nav_layout.addStretch()
-        nav_layout.addWidget(self.month_label)
-        nav_layout.addStretch()
-        nav_layout.addWidget(refresh_btn)
-        nav_layout.addWidget(next_btn)
+
+        right_widget = QWidget()
+        right_widget.setFixedWidth(220)
+        right_layout = QHBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(6)
+        _icon_btn_style = (
+            "font-size: 16px; padding: 0; "
+            "font-family: 'Segoe UI Symbol', 'Segoe UI';"
+        )
+        refresh_btn = QPushButton("\u21ba")   # ↺ anticlockwise circle
+        refresh_btn.setFixedSize(32, 32)
+        refresh_btn.setStyleSheet(_icon_btn_style)
+        refresh_btn.setToolTip("Re-count instances now")
+        refresh_btn.clicked.connect(self.refresh_requested)
+        export_btn = QPushButton("\u2b07")    # ⬇ downwards arrow
+        export_btn.setFixedSize(32, 32)
+        export_btn.setStyleSheet(_icon_btn_style)
+        export_btn.setToolTip("Export data to CSV")
+        export_btn.clicked.connect(self.open_export_dialog)
+        next_btn = QPushButton("Next \u203a")
+        next_btn.setFixedWidth(80)
+        next_btn.clicked.connect(self.next_month_action)
+        right_layout.addStretch()
+        right_layout.addWidget(refresh_btn)
+        right_layout.addWidget(export_btn)
+        right_layout.addWidget(next_btn)
+
+        nav_layout.addWidget(left_widget)
+        nav_layout.addWidget(self.month_label, 1)
+        nav_layout.addWidget(right_widget)
         root.addLayout(nav_layout)
 
         # --- Heatmap (centered) ---
@@ -184,6 +214,10 @@ class DashboardWindow(QMainWindow):
             return int(self.current_count_label.text())
         except Exception:
             return None
+
+    def open_export_dialog(self):
+        dlg = ExportDialog(self.db, self)
+        dlg.exec()
 
     def prev_month_action(self):
         self.heatmap.prev_month()

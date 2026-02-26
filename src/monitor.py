@@ -124,8 +124,8 @@ class ProcessMonitor:
         self.thread.wait(3000)  # Wait max 3 seconds then force stop
 
     def on_instance_count_updated(self, count):
-        print(f"Running instances: {count}")
+        pass
 
     def on_error(self, err_msg):
-        print(err_msg)
+        pass
 

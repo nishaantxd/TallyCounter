@@ -1,9 +1,11 @@
-from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QMessageBox, QVBoxLayout
+from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QMessageBox, QVBoxLayout, QFrame
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QColor, QFont
 
 CELL_SIZE = 48
+CELL_HEIGHT = 70   # 48 date box + 4 gap + 18 count pill
 CELL_RADIUS = 8
+PILL_RADIUS = 5
 
 DAY_LABEL_STYLE = """
     QLabel {
@@ -15,12 +17,50 @@ DAY_LABEL_STYLE = """
 """
 
 
-class ClickableLabel(QLabel):
+class ClickableCell(QWidget):
+    """Two-piece cell: thick square box for the date, thin pill for the count."""
     def __init__(self, date, parent=None):
-        super().__init__(str(date.day()), parent)
+        super().__init__(parent)
         self.date = date
         self.click_callback = None
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(4)
+
+        # ── Thick box: date number ──────────────────────────────────────────
+        self.date_box = QFrame()
+        self.date_box.setObjectName("dateBox")
+        self.date_box.setFixedSize(CELL_SIZE, CELL_SIZE)
+        db_lay = QVBoxLayout(self.date_box)
+        db_lay.setContentsMargins(0, 0, 0, 0)
+        self.day_lbl = QLabel(str(date.day()))
+        self.day_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        day_font = QFont()
+        day_font.setPointSize(11)
+        day_font.setBold(True)
+        self.day_lbl.setFont(day_font)
+        self.day_lbl.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        db_lay.addWidget(self.day_lbl)
+
+        # ── Thin pill: count ────────────────────────────────────────────────
+        self.count_box = QFrame()
+        self.count_box.setObjectName("countBox")
+        self.count_box.setFixedSize(CELL_SIZE, 18)
+        cb_lay = QVBoxLayout(self.count_box)
+        cb_lay.setContentsMargins(0, 0, 0, 0)
+        self.count_lbl = QLabel("")
+        self.count_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        count_font = QFont()
+        count_font.setPointSize(7)
+        count_font.setBold(True)
+        self.count_lbl.setFont(count_font)
+        self.count_lbl.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        cb_lay.addWidget(self.count_lbl)
+
+        lay.addWidget(self.date_box)
+        lay.addWidget(self.count_box)
 
     def mousePressEvent(self, event):
         if self.click_callback:
@@ -42,9 +82,9 @@ class CalendarHeatmap(QWidget):
         outer.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
 
         self.container = QWidget()
-        self.container.setMaximumWidth(CELL_SIZE * 7 + 60)
+        self.container.setMaximumWidth(CELL_SIZE * 7 + 6 * 10)  # 7 cells + 6 gaps of 10px
         self.grid = QGridLayout(self.container)
-        self.grid.setSpacing(6)
+        self.grid.setSpacing(10)
         self.grid.setContentsMargins(0, 0, 0, 0)
 
         outer.addWidget(self.container)
@@ -103,37 +143,54 @@ class CalendarHeatmap(QWidget):
         return QColor(r, g, b)
 
     def create_cell(self, date, count, color):
-        cell = ClickableLabel(date)
-        cell.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        cell.setFixedSize(CELL_SIZE, CELL_SIZE)
-        font = QFont()
-        font.setPointSize(10)
-        font.setBold(True)
-        cell.setFont(font)
+        cell = ClickableCell(date)
+        cell.setFixedSize(CELL_SIZE, CELL_HEIGHT)
+
         if color is None:
+            # No data — muted cells
             cell.setStyleSheet(f"""
-                QLabel {{
+                QWidget {{ background: transparent; }}
+                QFrame#dateBox {{
                     background-color: #2a2a2a;
-                    color: #666;
+                    border: 1px solid #111;
                     border-radius: {CELL_RADIUS}px;
                 }}
-                QLabel:hover {{
-                    background-color: #3a3a3a;
-                    color: #aaa;
+                QFrame#dateBox:hover {{
+                    background-color: #383838;
+                    border: 1px solid #3a3a3a;
+                }}
+                QFrame#countBox {{
+                    background-color: #1e1e1e;
+                    border: 1px solid #111;
+                    border-radius: {PILL_RADIUS}px;
                 }}
             """)
+            cell.day_lbl.setStyleSheet("color: #666; background: transparent;")
+            cell.count_lbl.setStyleSheet("color: transparent; background: transparent;")
         else:
+            # Has data — green date box + darker green pill
+            pill = color.darker(125)
             cell.setStyleSheet(f"""
-                QLabel {{
+                QWidget {{ background: transparent; }}
+                QFrame#dateBox {{
                     background-color: {color.name()};
-                    color: #111;
+                    border: 1px solid {color.darker(145).name()};
                     border-radius: {CELL_RADIUS}px;
                 }}
-                QLabel:hover {{
-                    background-color: {color.lighter(120).name()};
-                    color: #000;
+                QFrame#dateBox:hover {{
+                    background-color: {color.lighter(115).name()};
+                    border: 1px solid {color.name()};
+                }}
+                QFrame#countBox {{
+                    background-color: {pill.name()};
+                    border: 1px solid {color.darker(160).name()};
+                    border-radius: {PILL_RADIUS}px;
                 }}
             """)
+            cell.day_lbl.setStyleSheet("color: #071a0d; background: transparent;")
+            cell.count_lbl.setStyleSheet("color: #071a0d; background: transparent;")
+            cell.count_lbl.setText(str(count))
+
         cell.setToolTip(f"Date: {date.toString('yyyy-MM-dd')}\nMax Count: {count}")
         cell.click_callback = self.show_day_info
         return cell

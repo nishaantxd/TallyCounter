@@ -59,3 +59,13 @@ class Database:
         with self.conn:
             cursor = self.conn.execute("SELECT date, max_instances FROM daily_counts WHERE date LIKE ?", (date_prefix + '%',))
             return cursor.fetchall()
+
+    def get_counts_for_range(self, start_date, end_date):
+        """Return rows where date is between start_date and end_date (inclusive, 'YYYY-MM-DD' strings)."""
+        with self.conn:
+            cursor = self.conn.execute(
+                "SELECT date, max_instances FROM daily_counts WHERE date >= ? AND date <= ? ORDER BY date",
+                (start_date, end_date)
+            )
+            return cursor.fetchall()
+

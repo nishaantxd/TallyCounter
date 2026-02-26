@@ -69,9 +69,9 @@ TallyCounter/
 │   ├── database.py         # SQLite persistence (config + daily counts)
 │   ├── dashboard_window.py # Main dashboard UI (stat cards + heatmap)
 │   ├── heatmap_widget.py   # Calendar heatmap widget
-│   ├── config_window.py    # First-run executable selection
+│   ├── config_window.py    # Executable selection / configuration
+│   ├── export_dialog.py    # CSV export with date-range picker
 │   └── startup.py          # Windows registry auto-start helper
-├── testapp.py              # Dummy process for testing instance counting
 ├── TallyCounter.spec       # PyInstaller build spec
 ├── requirements.txt
 └── .gitignore
